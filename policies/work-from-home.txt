@@ -1,0 +1,33 @@
+WORK FROM HOME POLICY — HR Department
+
+1. Eligibility
+   - All employees who have completed their probation period (6 months) are eligible.
+   - Roles requiring physical presence (e.g., facilities, hardware) may have limited WFH options.
+
+2. WFH Schedule
+   - Employees may work from home up to 3 days per week.
+   - At least 2 days per week must be spent in the office for collaboration.
+   - WFH days must be pre-approved by the reporting manager on a weekly basis.
+
+3. Core Working Hours
+   - Employees must be available during core hours: 10:00 AM to 4:00 PM (local time).
+   - Flexibility is allowed outside core hours, provided daily work hours are met (8 hours).
+
+4. Equipment and Setup
+   - The company provides a laptop and essential peripherals for WFH use.
+   - Employees must ensure a stable internet connection (minimum 10 Mbps).
+   - A dedicated workspace is recommended but not mandatory.
+
+5. Communication
+   - Employees must be reachable via Slack, email, and video calls during core hours.
+   - Daily standup meetings must be attended via video with the camera on.
+   - Response time for messages should not exceed 30 minutes during core hours.
+
+6. Security
+   - Company VPN must be used when accessing internal systems.
+   - Confidential documents must not be printed or shared on personal devices.
+   - Report any security incidents to IT within 1 hour.
+
+7. Revocation
+   - WFH privileges may be revoked if productivity drops or policies are violated.
+   - HR will provide a written notice before revoking WFH privileges.
