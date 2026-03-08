@@ -1,18 +1,21 @@
 import { useState } from 'react';
 import ChatWindow from '../components/ChatWindow';
 import ChatInput from '../components/ChatInput';
-import { sendMessage } from '../services/api';
+import { streamMessage } from '../services/api';
 
 export default function ChatPage() {
-    const [messages, setMessages] = useState([
-        {
-            role: 'bot',
-            content: "Hello! 👋 I'm your HR assistant. I can help you with company policies, leave balances, benefits, and more. How can I help you today?",
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            date: new Date().toISOString(),
-        }
-    ]);
+    const [messages, setMessages] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [abortController, setAbortController] = useState(null);
+
+    const suggestQueries = ['Leave policy', 'WFH guidelines', 'Benefits info'];
+
+    const handleStop = () => {
+        if (abortController) {
+            abortController.abort();
+            setIsLoading(false);
+        }
+    };
 
     const handleSend = async (text) => {
         const now = new Date();
@@ -22,56 +25,110 @@ export default function ChatPage() {
         setIsLoading(true);
 
         try {
-            const res = await sendMessage(text);
+            const controller = new AbortController();
+            setAbortController(controller);
+
             const resNow = new Date();
+            const botMsgId = Date.now().toString();
+
+            // Add empty bot message block to the ChatWindow first
             setMessages((prev) => [
                 ...prev,
                 {
+                    id: botMsgId,
                     role: 'bot',
-                    content: res.data.data.message,
+                    content: '', // Will be filled as stream arrives
                     timestamp: resNow.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     date: resNow.toISOString(),
                 },
             ]);
-        } catch {
+
+            // Call the streaming API endpoint
+            await streamMessage(
+                text,
+                null,
+                (chunk) => {
+                    setMessages((prev) => {
+                        const newMessages = [...prev];
+                        const lastIndex = newMessages.length - 1;
+                        // Avoid mutating state directly
+                        newMessages[lastIndex] = {
+                            ...newMessages[lastIndex],
+                            content: newMessages[lastIndex].content + chunk
+                        };
+                        return newMessages;
+                    });
+                },
+                null,
+                controller.signal
+            );
+
+        } catch (err) {
+            if (err.name === 'AbortError') {
+                return; // User cancelled generation
+            }
             const errNow = new Date();
-            setMessages((prev) => [
-                ...prev,
-                {
+            setMessages((prev) => {
+                // If it fails during stream, just append an error message or replace the empty one
+                const newMessages = [...prev];
+                const lastIndex = newMessages.length - 1;
+                newMessages[lastIndex] = {
                     role: 'bot',
-                    content: 'Could not connect to the server. Make sure the backend is running on port 5000.',
+                    content: 'Could not connect to the server. Make sure the backend is running on port 5000 and Ollama is available.',
                     timestamp: errNow.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     date: errNow.toISOString(),
-                },
-            ]);
+                };
+                return newMessages;
+            });
         } finally {
             setIsLoading(false);
+            setAbortController(null);
         }
     };
 
     return (
-        <div className="flex flex-col h-full bg-white">
-            {/* Header */}
-            <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-gray-900 flex items-center justify-center">
-                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.625 9.75a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 01.778-.332 48.294 48.294 0 005.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <h1 className="text-sm font-semibold text-gray-900">HR Assistant</h1>
-                        <p className="text-[11px] text-gray-400">AI-powered</p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                    <span className="text-[11px] text-gray-400">Online</span>
-                </div>
+        <div className="flex flex-col h-full bg-white relative">
+            {/* Header Removed as requested by user */}
+
+            {/* Chat Body container: only show messages if there's more than the default greeting, otherwise sit empty so input centers */}
+            <div className="flex-1 overflow-y-auto w-full pb-40">
+                {messages.length > 0 && (
+                    <ChatWindow messages={messages} isLoading={isLoading} />
+                )}
             </div>
 
-            <ChatWindow messages={messages} isLoading={isLoading} />
-            <ChatInput onSend={handleSend} isLoading={isLoading} />
+            {/* Input Area: Centered vertically if empty, fixed to bottom if active */}
+            <div className={`absolute w-full left-0 z-10 pointer-events-none transition-all duration-500 ease-in-out ${messages.length === 0 ? 'top-1/2 -translate-y-1/2 px-5' : 'bottom-0 bg-gradient-to-t from-white via-white to-transparent pt-8 pb-6 px-5'}`}>
+                <div className="max-w-3xl mx-auto w-full flex flex-col items-center pointer-events-auto">
+
+                    {/* Suggestion Chips */}
+                    {messages.length === 0 && (
+                        <div className="flex flex-wrap gap-2 justify-center mb-6">
+                            {suggestQueries.map((q) => (
+                                <button
+                                    key={q}
+                                    onClick={() => handleSend(q)}
+                                    disabled={isLoading}
+                                    className="text-[13px] px-3.5 py-1.5 rounded-full border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-colors disabled:opacity-50"
+                                >
+                                    {q}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Input Component Wrapper */}
+                    <div className="w-full relative">
+                        <ChatInput onSend={handleSend} onStop={handleStop} isLoading={isLoading} />
+                    </div>
+
+                    {messages.length > 0 && (
+                        <p className="text-[11px] text-gray-400 mt-2 text-center w-full">
+                            AI-generated content may be inaccurate. Verify policies on the HR portal.
+                        </p>
+                    )}
+                </div>
+            </div>
         </div>
     );
 }

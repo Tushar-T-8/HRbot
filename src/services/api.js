@@ -9,6 +9,58 @@ const api = axios.create({
 export const sendMessage = (message, employeeId = null) =>
     api.post('/chat', { message, employeeId });
 
+export const streamMessage = async (message, employeeId = null, onChunk, onDone, signal) => {
+    try {
+        const response = await fetch('http://localhost:5000/api/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'text/event-stream'
+            },
+            body: JSON.stringify({ message, employeeId, stream: true }),
+            signal
+        });
+
+        if (!response.ok) throw new Error('Network response was not ok');
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+
+            const lines = buffer.split('\n\n');
+            buffer = lines.pop(); // Keep the last incomplete chunk in the buffer
+
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    const dataStr = line.replace('data: ', '').trim();
+                    if (!dataStr) continue;
+
+                    try {
+                        const data = JSON.parse(dataStr);
+                        if (data.done) {
+                            if (onDone) onDone(data);
+                        } else if (data.chunk) {
+                            if (onChunk) onChunk(data.chunk);
+                        }
+                    } catch (e) {
+                        console.error('Error parsing SSE json:', e, dataStr);
+                    }
+                }
+            }
+        }
+
+    } catch (error) {
+        console.error('Error in stream message:', error);
+        throw error;
+    }
+};
+
 export const getChatAnalytics = () => api.get('/chat/analytics');
 
 // Employee API

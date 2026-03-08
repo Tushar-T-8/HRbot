@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import ChatPage from './pages/ChatPage';
 import DashboardPage from './pages/DashboardPage';
-import TicketsPage from './pages/TicketsPage';
 
 function App() {
   return (
@@ -13,7 +12,6 @@ function App() {
           <Routes>
             <Route path="/" element={<ChatPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/tickets" element={<TicketsPage />} />
           </Routes>
         </main>
       </div>

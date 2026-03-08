@@ -1,11 +1,15 @@
 import { useState } from 'react';
 
-export default function ChatInput({ onSend, isLoading }) {
+export default function ChatInput({ onSend, onStop, isLoading }) {
     const [message, setMessage] = useState('');
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (!message.trim() || isLoading) return;
+        if (isLoading) {
+            if (onStop) onStop();
+            return;
+        }
+        if (!message.trim()) return;
         onSend(message.trim());
         setMessage('');
     };
@@ -18,8 +22,8 @@ export default function ChatInput({ onSend, isLoading }) {
     };
 
     return (
-        <form onSubmit={handleSubmit}>
-            <div className="flex items-end gap-2 px-5 py-4 border-t border-gray-100 bg-white">
+        <form onSubmit={handleSubmit} className="w-full relative">
+            <div className="flex items-end gap-3 w-full relative group">
                 <textarea
                     id="chat-input"
                     value={message}
@@ -28,24 +32,27 @@ export default function ChatInput({ onSend, isLoading }) {
                     placeholder="Ask about leave, benefits, WFH policies..."
                     rows={1}
                     disabled={isLoading}
-                    className="flex-1 resize-none rounded-lg bg-gray-50 border border-gray-200 px-3.5 py-2.5 text-[13px] text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-300 transition-all disabled:opacity-50"
-                    style={{ maxHeight: '100px' }}
+                    className="flex-1 resize-none rounded-2xl bg-white shadow-md border border-gray-200 pl-4 py-3.5 pr-14 text-[15px] text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ maxHeight: '150px' }}
                 />
 
                 <button
                     type="submit"
-                    disabled={!message.trim() || isLoading}
                     id="send-button"
-                    className="shrink-0 h-10 w-10 rounded-lg bg-gray-900 flex items-center justify-center text-white hover:bg-gray-800 transition-colors disabled:opacity-20 disabled:cursor-not-allowed active:scale-95"
+                    className={`absolute bottom-2 right-2 shrink-0 h-9 w-9 rounded-xl flex items-center justify-center transition-all ${isLoading
+                            ? 'bg-red-500 text-white shadow-md hover:bg-red-600'
+                            : message.trim()
+                                ? 'bg-blue-500 text-white shadow-md hover:bg-blue-600'
+                                : 'bg-gray-100 text-gray-400'
+                        }`}
                 >
                     {isLoading ? (
-                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                            <rect x="6" y="6" width="12" height="12" rx="2" ry="2" />
                         </svg>
                     ) : (
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
                         </svg>
                     )}
                 </button>

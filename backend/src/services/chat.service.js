@@ -1,7 +1,6 @@
 import { aiService } from './ai.service.js';
 import { policyService } from './policy.service.js';
 import { ticketService } from './ticket.service.js';
-import prisma from '../config/db.js';
 
 // In-memory chat log for when DB is unavailable
 const chatLogs = [];
@@ -60,64 +59,54 @@ export const chatService = {
      * Process a chat message and return a response.
      * Works fully offline using policy files + AI fallback.
      */
-    async processMessage(message, employeeId = null) {
+    async processMessage(message, employeeId = null, onChunk = null) {
         const intent = detectIntent(message);
         let context = '';
         let response = '';
 
+        const consumeStream = async (stream) => {
+            for await (const chunk of stream) {
+                response += chunk;
+                if (onChunk) onChunk(chunk);
+            }
+        };
+
         switch (intent) {
             case 'leave_balance': {
-                // Try DB first, fall back to policy content
-                if (prisma && employeeId) {
-                    try {
-                        const balance = await prisma.leaveBalance.findUnique({
-                            where: { employeeId: parseInt(employeeId) },
-                        });
-                        if (balance) {
-                            context = `Employee's remaining leave days: ${balance.remainingDays}`;
-                        }
-                    } catch {
-                        // DB unavailable, use policy content
-                    }
-                }
                 if (!context) {
                     context = await policyService.searchPolicies('leave balance annual sick days entitlement');
                 }
-                response = await aiService.generateResponse(message, context);
+                const stream = await aiService.generateResponseStream(message, context);
+                await consumeStream(stream);
                 break;
             }
 
             case 'policy_question': {
                 context = await policyService.searchPolicies(message);
-                response = await aiService.generateResponse(message, context);
+                const stream = await aiService.generateResponseStream(message, context);
+                await consumeStream(stream);
                 break;
             }
 
             case 'escalation': {
                 const result = await ticketService.escalateIssue(employeeId || 1, message);
                 response = result.message;
+                if (onChunk) onChunk(response);
                 break;
             }
 
             case 'general_hr':
             default: {
                 context = await policyService.searchPolicies(message);
-                response = await aiService.generateResponse(message, context);
+                const stream = await aiService.generateResponseStream(message, context);
+                await consumeStream(stream);
                 break;
             }
         }
 
-        // Log chat — try DB, fall back to in-memory
+        // Log chat to in-memory store
         const logEntry = { message, response, intent, createdAt: new Date() };
-        if (prisma) {
-            try {
-                await prisma.chatLog.create({ data: { message, response, intent } });
-            } catch {
-                chatLogs.push(logEntry);
-            }
-        } else {
-            chatLogs.push(logEntry);
-        }
+        chatLogs.push(logEntry);
 
         return { message: response, intent };
     },
@@ -126,25 +115,6 @@ export const chatService = {
      * Get chat analytics.
      */
     async getAnalytics() {
-        // Try DB first
-        if (prisma) {
-            try {
-                const totalQueries = await prisma.chatLog.count();
-                const intentCounts = await prisma.chatLog.groupBy({
-                    by: ['intent'],
-                    _count: { intent: true },
-                    orderBy: { _count: { intent: 'desc' } },
-                });
-                const recentChats = await prisma.chatLog.findMany({
-                    take: 10,
-                    orderBy: { createdAt: 'desc' },
-                });
-                return { totalQueries, intentCounts, recentChats };
-            } catch {
-                // Fall through to in-memory
-            }
-        }
-
         // In-memory fallback
         const intentMap = {};
         for (const log of chatLogs) {
