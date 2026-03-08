@@ -23,7 +23,7 @@ export default function Sidebar() {
     ];
 
     return (
-        <div className="w-60 h-full bg-white border-r border-gray-100 flex flex-col">
+        <div className="w-60 h-full bg-[#fdfbf7] border-r border-gray-100 flex flex-col">
             {/* Logo */}
             <div className="p-5 border-b border-gray-100">
                 <div className="flex items-center gap-2.5">

@@ -45,9 +45,13 @@ export default function MessageBubble({ message, isTyping }) {
                         />
                     )}
 
-                    {/* Inline typing indicator indicator */}
-                    {!isUser && isTyping && (
-                        <span className="inline-block w-2.5 h-4 ml-1 bg-blue-500 animate-pulse" style={{ borderRadius: '1px' }}></span>
+                    {/* Inline typing indicator */}
+                    {!isUser && isTyping && !message.content && (
+                        <span className="inline-flex items-center gap-1 h-4">
+                            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                        </span>
                     )}
                 </div>
             </div>

@@ -76,7 +76,7 @@ export default function DashboardPage() {
     return (
         <div className="flex h-full w-full overflow-hidden bg-[#fafafa]">
             {/* Main Content Area */}
-            <div className="flex-1 p-6 overflow-y-auto h-full">
+            <div className="flex-1 p-6 overflow-y-auto h-full bg-white">
                 <div className="mb-6">
                     <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
                     <p className="text-sm text-gray-400 mt-0.5">Activity overview</p>
@@ -133,7 +133,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Right Sidebar - Tickets */}
-            <div className="w-80 h-full bg-white border-l border-gray-100 flex flex-col shrink-0 overflow-hidden">
+            <div className="w-80 h-full bg-[#fdfbf7] border-l border-gray-100 flex flex-col shrink-0 overflow-hidden">
                 {!loading && (
                     <>
                         <div className="p-5 border-b border-gray-100 shrink-0">
