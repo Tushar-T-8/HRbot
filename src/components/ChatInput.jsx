@@ -32,18 +32,18 @@ export default function ChatInput({ onSend, onStop, isLoading }) {
                     placeholder="Ask about leave, benefits, WFH policies..."
                     rows={1}
                     disabled={isLoading}
-                    className="flex-1 resize-none rounded-2xl bg-white shadow-md border border-gray-200 pl-4 py-3.5 pr-14 text-[15px] text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 resize-none rounded-full bg-white shadow-md border border-gray-200 pl-4 py-3.5 pr-16 text-[15px] text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ maxHeight: '150px' }}
                 />
 
                 <button
                     type="submit"
                     id="send-button"
-                    className={`absolute bottom-2 right-2 shrink-0 h-9 w-9 rounded-xl flex items-center justify-center transition-all ${isLoading
-                            ? 'bg-red-500 text-white shadow-md hover:bg-red-600'
-                            : message.trim()
-                                ? 'bg-blue-500 text-white shadow-md hover:bg-blue-600'
-                                : 'bg-gray-100 text-gray-400'
+                    className={`absolute bottom-2 right-2 shrink-0 h-9 w-9 rounded-full flex items-center justify-center transition-all ${isLoading
+                        ? 'bg-red-500 text-white shadow-md hover:bg-red-600'
+                        : message.trim()
+                            ? 'bg-blue-500 text-white shadow-md hover:bg-blue-600'
+                            : 'bg-gray-100 text-gray-400'
                         }`}
                 >
                     {isLoading ? (
