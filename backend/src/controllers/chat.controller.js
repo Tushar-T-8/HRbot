@@ -3,7 +3,9 @@ import { chatService } from '../services/chat.service.js';
 export const chatController = {
     async sendMessage(req, res, next) {
         try {
-            const { message, employeeId, stream } = req.body;
+            const { message, stream } = req.body;
+            // SECURITY HARDENING: Overriding whatever the frontend sends with the actual verified token ID
+            const employeeId = req.user.id;
 
             if (!message) {
                 return res.status(400).json({ success: false, error: 'Message is required' });
