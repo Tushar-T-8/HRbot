@@ -8,6 +8,45 @@ const pdf = require('pdf-parse');
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// We need to keep the dynamic import for Voy as it is a WASM module
+let voyClient = null;
+let pipeline = null;
+
+/**
+ * Initialize Voy DB and Sentence Transformers
+ */
+async function initVectorSearch() {
+    try {
+        console.log("⏳ Initializing Voy Search and downloading embedding model (this may take a moment on first run)...");
+
+        // 1. Initialize Transformers.js pipeline
+        const transformers = await import('@xenova/transformers');
+        const { pipeline: getPipeline } = transformers;
+
+        // Use a lightweight, fast model suitable for Node.js
+        pipeline = await getPipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+
+        // 2. Initialize Voy DB
+        const voy = await import('voy-search/voy_search.js');
+        voyClient = new voy.Voy({
+            embeddings: [{ id: "init", title: "init", url: "init", embeddings: [0.0] }] // Voy requires an initial dummy structure
+        });
+
+        console.log("✅ Vector Search Environment Initialized");
+    } catch (error) {
+        console.error("❌ Failed to initialize Vector Search:", error);
+    }
+}
+
+/**
+ * Generate embeddings for a given text
+ */
+async function generateEmbedding(text) {
+    if (!pipeline) throw new Error("Pipeline not initialized");
+    const output = await pipeline(text, { pooling: 'mean', normalize: true });
+    return Array.from(output.data);
+}
+
 /**
  * Parse text content from policy files.
  * Extracts text from both .txt and .pdf files.
@@ -53,6 +92,28 @@ async function loadPolicyFiles() {
         }
 
         console.log(`📄 Loaded ${documents.length} policy chunks from ${files.length} files`);
+
+        // Compute embeddings for Voy
+        if (voyClient && pipeline) {
+            console.log("Generating embeddings for policy chunks...");
+            const voyData = [];
+            for (let i = 0; i < documents.length; i++) {
+                const doc = documents[i];
+                const embedding = await generateEmbedding(doc.text);
+                voyData.push({
+                    id: String(i),
+                    title: doc.source,
+                    url: doc.text, // Abusing URL field to store text, as Voy is simple
+                    embeddings: embedding
+                });
+            }
+
+            // Re-instantiate Voy with actual data
+            const voy = await import('voy-search/voy_search.js');
+            voyClient = new voy.Voy({ embeddings: voyData });
+            console.log("✅ Embeddings stored in memory.");
+        }
+
     } catch (error) {
         console.warn('⚠️ Could not read policy files:', error.message);
     }
@@ -60,43 +121,45 @@ async function loadPolicyFiles() {
     return documents;
 }
 
-// Load policies once at startup
-const policyDocuments = await loadPolicyFiles();
+// Initialize in the background so the server can start immediately
+let policyDocuments = [];
+let initPromise = (async () => {
+    await initVectorSearch();
+    policyDocuments = await loadPolicyFiles();
+})().catch(err => console.error('Background init failed:', err));
+
 
 export const policyService = {
     /**
-     * Search policies using keyword matching.
-     * Scores each chunk by how many query keywords it contains,
-     * then returns the top results as context for the AI.
+     * Search policies using Semantic Vector Matching (Voy).
      */
-    searchPolicies(query, topN = 3) {
-        const keywords = query
-            .toLowerCase()
-            .replace(/[?.,!]/g, '')
-            .split(/\s+/)
-            .filter((w) => w.length > 2); // skip tiny words
+    async searchPolicies(query, topN = 3) {
+        if (!voyClient || !pipeline) {
+            console.warn("Vector search not ready, falling back to basic search...");
+            return "Vector search engine not initialized yet.";
+        }
 
-        const scored = policyDocuments.map((doc) => {
-            const lower = doc.text.toLowerCase();
-            let score = 0;
+        try {
+            // Generate embedding for the user's question
+            const queryEmbedding = await generateEmbedding(query);
 
-            for (const kw of keywords) {
-                if (lower.includes(kw)) score += 1;
-                // Boost exact phrase matches
-                if (lower.includes(query.toLowerCase().slice(0, 20))) score += 2;
+            // Search in Voy
+            const results = voyClient.search(queryEmbedding, topN);
+
+            if (!results || results.length === 0) {
+                return 'No relevant policy information found.';
             }
 
-            return { ...doc, score };
-        });
+            // Format results
+            const formattedResults = results.map(result => {
+                return `[Source: ${result.title}]\n${result.url}`;
+            });
 
-        scored.sort((a, b) => b.score - a.score);
-
-        const results = scored
-            .filter((d) => d.score > 0)
-            .slice(0, topN)
-            .map((d) => `[Source: ${d.source}]\n${d.text}`);
-
-        return results.join('\n\n---\n\n') || 'No relevant policy information found.';
+            return formattedResults.join('\n\n---\n\n');
+        } catch (error) {
+            console.error("Search failed:", error);
+            return 'No relevant policy information found due to search error.';
+        }
     },
 
     /**
@@ -107,11 +170,9 @@ export const policyService = {
     },
 
     /**
-     * Reload policies from disk (useful after adding new files).
+     * Reload policies and re-embed from disk.
      */
     async reload() {
-        policyDocuments.length = 0;
-        const newDocs = await loadPolicyFiles();
-        policyDocuments.push(...newDocs);
+        policyDocuments = await loadPolicyFiles();
     },
 };

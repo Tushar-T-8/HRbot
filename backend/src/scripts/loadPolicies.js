@@ -1,9 +1,9 @@
 import { policyService } from '../services/policy.service.js';
 
 async function loadPolicies() {
-    console.log('📚 Loading policies into ChromaDB...');
-    await policyService.loadPoliciesIntoChroma();
-    console.log('✅ Done!');
+    console.log('📚 Loading policies into Voy search index...');
+    await policyService.reload();
+    console.log('✅ Done! Policies loaded and embedded.');
     process.exit(0);
 }
 

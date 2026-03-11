@@ -54,6 +54,9 @@ function detectIntent(message) {
     return 'general_hr';
 }
 
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
+
 export const chatService = {
     /**
      * Process a chat message and return a response.
@@ -63,6 +66,13 @@ export const chatService = {
         const intent = detectIntent(message);
         let context = '';
         let response = '';
+        let employeeProfile = null;
+
+        if (employeeId) {
+            employeeProfile = await prisma.employee.findUnique({
+                where: { id: parseInt(employeeId) }
+            });
+        }
 
         const consumeStream = async (stream) => {
             for await (const chunk of stream) {
@@ -76,14 +86,14 @@ export const chatService = {
                 if (!context) {
                     context = await policyService.searchPolicies('leave balance annual sick days entitlement');
                 }
-                const stream = await aiService.generateResponseStream(message, context);
+                const stream = await aiService.generateResponseStream(message, context, employeeProfile);
                 await consumeStream(stream);
                 break;
             }
 
             case 'policy_question': {
                 context = await policyService.searchPolicies(message);
-                const stream = await aiService.generateResponseStream(message, context);
+                const stream = await aiService.generateResponseStream(message, context, employeeProfile);
                 await consumeStream(stream);
                 break;
             }
@@ -98,7 +108,7 @@ export const chatService = {
             case 'general_hr':
             default: {
                 context = await policyService.searchPolicies(message);
-                const stream = await aiService.generateResponseStream(message, context);
+                const stream = await aiService.generateResponseStream(message, context, employeeProfile);
                 await consumeStream(stream);
                 break;
             }

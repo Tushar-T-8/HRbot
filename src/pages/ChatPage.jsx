@@ -2,8 +2,10 @@ import { useState } from 'react';
 import ChatWindow from '../components/ChatWindow';
 import ChatInput from '../components/ChatInput';
 import { streamMessage } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 export default function ChatPage() {
+    const { user } = useAuth();
     const [messages, setMessages] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [abortController, setAbortController] = useState(null);
@@ -46,7 +48,7 @@ export default function ChatPage() {
             // Call the streaming API endpoint
             await streamMessage(
                 text,
-                null,
+                user?.id || null,
                 (chunk) => {
                     setMessages((prev) => {
                         const newMessages = [...prev];

@@ -1,32 +1,36 @@
-// Shared mock store for development/offline mode
-const mockTickets = [];
-let mockIdCounter = 1;
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 export const ticketService = {
     async getAllTickets() {
-        return mockTickets;
+        return await prisma.ticket.findMany({
+            include: { employee: true },
+            orderBy: { createdAt: 'desc' }
+        });
     },
 
     async getTicketById(id) {
-        const mock = mockTickets.find(t => t.id === parseInt(id));
-        if (mock) return mock;
-        throw Object.assign(new Error('Ticket not found'), { statusCode: 404 });
+        const ticket = await prisma.ticket.findUnique({
+            where: { id: parseInt(id) },
+            include: { employee: true }
+        });
+        if (ticket) return ticket;
+        throw Object.assign(new Errsearchor('Ticket not found'), { statusCode: 404 });
     },
 
     async createTicket(data) {
         if (!data.employeeId || !data.issue) {
             throw Object.assign(new Error('employeeId and issue are required'), { statusCode: 400 });
         }
-        const ticket = {
-            id: mockIdCounter++,
-            employeeId: parseInt(data.employeeId),
-            issue: data.issue,
-            status: 'OPEN',
-            createdAt: new Date(),
-            employee: { id: 1, name: 'Tushar Thapliyal', department: 'Engineering' } // Default mock employee
-        };
-        mockTickets.push(ticket);
-        return ticket;
+        return await prisma.ticket.create({
+            data: {
+                employeeId: parseInt(data.employeeId),
+                issue: data.issue,
+                status: 'OPEN',
+            },
+            include: { employee: true }
+        });
     },
 
     async updateTicketStatus(id, status) {
@@ -34,12 +38,15 @@ export const ticketService = {
         if (!validStatuses.includes(status)) {
             throw Object.assign(new Error(`Invalid status. Must be one of: ${validStatuses.join(', ')}`), { statusCode: 400 });
         }
-        const idx = mockTickets.findIndex(t => t.id === parseInt(id));
-        if (idx >= 0) {
-            mockTickets[idx].status = status;
-            return mockTickets[idx];
+        try {
+            return await prisma.ticket.update({
+                where: { id: parseInt(id) },
+                data: { status },
+                include: { employee: true }
+            });
+        } catch (error) {
+            throw Object.assign(new Error('Ticket not found or update failed'), { statusCode: 404 });
         }
-        throw Object.assign(new Error('Ticket not found'), { statusCode: 404 });
     },
 
     async escalateIssue(employeeId, issue) {
@@ -55,10 +62,14 @@ export const ticketService = {
     },
 
     async getStats() {
+        const total = await prisma.ticket.count();
+        const open = await prisma.ticket.count({ where: { status: 'OPEN' } });
+        const resolved = await prisma.ticket.count({ where: { status: 'RESOLVED' } });
+
         return {
-            total: mockTickets.length,
-            open: mockTickets.filter(t => t.status === 'OPEN').length,
-            resolved: mockTickets.filter(t => t.status === 'RESOLVED').length
+            total,
+            open,
+            resolved
         };
     },
 };

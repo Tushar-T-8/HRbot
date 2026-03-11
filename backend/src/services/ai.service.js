@@ -8,10 +8,23 @@ export const aiService = {
      * Generate a response using Ollama API directly.
      * Falls back to smart policy-aware responses if Ollama is unavailable.
      */
-    async *generateResponseStream(prompt, context = '') {
-        const systemMessage = context
-            ? `You are a helpful HR assistant. Use the following context from company policy documents to answer the question accurately.\n\nPolicy Context:\n${context}`
-            : `You are a helpful HR assistant. Answer the following HR-related question professionally.`;
+    async *generateResponseStream(prompt, context = '', employeeProfile = null) {
+        let systemMessage = '';
+        if (employeeProfile) {
+            systemMessage = `You are an HR Assistant. You are currently assisting ${employeeProfile.name}.
+CRITICAL RULE: You are strictly forbidden from sharing information about any other employee. 
+If the user asks about someone other than ${employeeProfile.name}, you MUST refuse to answer and state that you can only discuss their own personal data.
+
+User's Data Context:
+${JSON.stringify({ ...employeeProfile, leaveBalance: { remainingDays: employeeProfile.leaveBalance } })}
+
+Policy Context:
+${context}`;
+        } else {
+            systemMessage = context
+                ? `You are a helpful HR assistant. Use the following context from company policy documents to answer the question accurately.\n\nPolicy Context:\n${context}`
+                : `You are a helpful HR assistant. Answer the following HR-related question professionally.`;
+        }
 
         const ollamaUrl = process.env.OLLAMA_URL || 'http://localhost:11434/v1';
         const model = process.env.OLLAMA_MODEL || 'llama3';

@@ -11,12 +11,18 @@ export const sendMessage = (message, employeeId = null) =>
 
 export const streamMessage = async (message, employeeId = null, onChunk, onDone, signal) => {
     try {
+        const token = localStorage.getItem('token');
+        const headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'text/event-stream',
+        };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
         const response = await fetch('http://localhost:5000/api/chat', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'text/event-stream'
-            },
+            headers,
             body: JSON.stringify({ message, employeeId, stream: true }),
             signal
         });
@@ -73,5 +79,11 @@ export const getTicketStats = () => api.get('/tickets/stats');
 export const createTicket = (data) => api.post('/tickets', data);
 export const updateTicketStatus = (id, status) =>
     api.patch(`/tickets/${id}/status`, { status });
+
+// Auth API
+export const loginUser = (email, password) =>
+    api.post('/auth/login', { email, password });
+export const signupUser = (data) =>
+    api.post('/auth/signup', data);
 
 export default api;
