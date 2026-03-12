@@ -1,7 +1,21 @@
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load prompts dynamically
+const promptsPath = path.join(__dirname, '../config/prompts.json');
+let prompts = {};
+try {
+    prompts = JSON.parse(fs.readFileSync(promptsPath, 'utf8'));
+} catch (e) {
+    console.warn('⚠️ Could not load prompts.json', e.message);
+}
 
 export const aiService = {
     /**
@@ -10,20 +24,25 @@ export const aiService = {
      */
     async *generateResponseStream(prompt, context = '', employeeProfile = null) {
         let systemMessage = '';
+        
+        // Compile all the rules from the newly structured prompts.json into one master instruction block
+        const buildMasterPrompt = () => {
+            let compiled = '';
+            for (const [key, ruleset] of Object.entries(prompts)) {
+                // Ensure we only append actual prompt strings, avoiding metadata
+                if (ruleset && ruleset.prompt) {
+                    compiled += `[${key.toUpperCase()}]: ${ruleset.prompt}\n`;
+                }
+            }
+            return compiled;
+        };
+
+        const masterPrompt = buildMasterPrompt();
+
         if (employeeProfile) {
-            systemMessage = `You are an HR Assistant. You are currently assisting ${employeeProfile.name}.
-CRITICAL RULE: You are strictly forbidden from sharing information about any other employee. 
-If the user asks about someone other than ${employeeProfile.name}, you MUST refuse to answer and state that you can only discuss their own personal data.
-
-User's Data Context:
-${JSON.stringify({ ...employeeProfile, leaveBalance: { remainingDays: employeeProfile.leaveBalance } })}
-
-Policy Context:
-${context}`;
+            systemMessage = `${masterPrompt}\n\nCURRENT USER DATA:\nName: ${employeeProfile.name}\nRole: ${employeeProfile.role}\nDepartment: ${employeeProfile.department}\nLeave Balance: ${employeeProfile.leaveBalance} days\n\nPOLICY CONTEXT:\n${context}`;
         } else {
-            systemMessage = context
-                ? `You are a helpful HR assistant. Use the following context from company policy documents to answer the question accurately.\n\nPolicy Context:\n${context}`
-                : `You are a helpful HR assistant. Answer the following HR-related question professionally.`;
+            systemMessage = `${masterPrompt}\n\nPOLICY CONTEXT:\n${context}`;
         }
 
         const ollamaUrl = process.env.OLLAMA_URL || 'http://localhost:11434/v1';
@@ -41,7 +60,7 @@ ${context}`;
                         { role: 'system', content: systemMessage },
                         { role: 'user', content: prompt }
                     ],
-                    temperature: 0.7,
+                    temperature: 0.2,
                     stream: true,
                 })
             });
@@ -143,13 +162,13 @@ ${context}`;
         const lower = prompt.toLowerCase();
 
         if (lower.includes('hello') || lower.includes('hi') || lower.includes('hey')) {
-            return 'Hello! 👋 I\'m your HR assistant. I can help you with leave policies, work-from-home guidelines, employee benefits, and more. What would you like to know?';
+            return (prompts.fallbacks?.greetings || ['Hello! 👋 How can I help you?']).join('\n');
         }
 
         if (lower.includes('thank')) {
-            return 'You\'re welcome! Let me know if you have any other questions about company policies.';
+            return (prompts.fallbacks?.thanks || ['You\'re welcome!']).join('\n');
         }
 
-        return 'I\'m your HR assistant and I can help with questions about:\n\n• **Leave policies** — annual, sick, parental leave\n• **Work from home** — eligibility, schedule, guidelines\n• **Benefits** — health insurance, retirement, wellness\n• **Escalation** — connect you with an HR representative\n\nWhat would you like to know?';
+        return (prompts.fallbacks?.default || ['I am an HR assistant.']).join('\n');
     },
 };
