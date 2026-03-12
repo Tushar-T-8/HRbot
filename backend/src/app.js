@@ -4,6 +4,7 @@ import authRoutes from './routes/auth.routes.js';
 import chatRoutes from './routes/chat.routes.js';
 import employeeRoutes from './routes/employee.routes.js';
 import ticketRoutes from './routes/ticket.routes.js';
+import adminRoutes from './routes/admin.routes.js';
 import { authenticate, requireRole } from './middleware/auth.middleware.js';
 
 const app = express();
@@ -24,6 +25,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/chat', authenticate, chatRoutes);
 app.use('/api/employees', authenticate, requireRole('HR'), employeeRoutes);
 app.use('/api/tickets', authenticate, requireRole('HR'), ticketRoutes);
+app.use('/api/admin', authenticate, requireRole('HR'), adminRoutes);
 
 // Global error handler
 app.use((err, req, res, _next) => {

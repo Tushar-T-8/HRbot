@@ -2,7 +2,6 @@ import axios from 'axios';
 
 const api = axios.create({
     baseURL: 'http://localhost:5000/api',
-    headers: { 'Content-Type': 'application/json' },
 });
 
 // Chat API
@@ -79,6 +78,12 @@ export const getTicketStats = () => api.get('/tickets/stats');
 export const createTicket = (data) => api.post('/tickets', data);
 export const updateTicketStatus = (id, status) =>
     api.patch(`/tickets/${id}/status`, { status });
+
+// Admin API
+export const uploadPolicyFiles = (formData) =>
+    api.post('/admin/upload', formData);
+export const reloadPoliciesAndLeaves = () =>
+    api.post('/admin/reload');
 
 // Auth API
 export const loginUser = (email, password) =>

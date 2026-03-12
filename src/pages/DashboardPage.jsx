@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { getChatAnalytics, getTickets, updateTicketStatus } from '../services/api';
+import { getChatAnalytics, getTickets, updateTicketStatus, uploadPolicyFiles, reloadPoliciesAndLeaves } from '../services/api';
 
 export default function DashboardPage() {
     const [analytics, setAnalytics] = useState({ totalQueries: 0, intentCounts: [], recentChats: [] });
     const [tickets, setTickets] = useState([]);
     const [ticketStats, setTicketStats] = useState({ total: 0, open: 0, inProgress: 0, resolved: 0 });
     const [loading, setLoading] = useState(true);
+    const [uploading, setUploading] = useState(false);
+    const [uploadMessage, setUploadMessage] = useState('');
 
     useEffect(() => {
         loadData();
@@ -30,6 +32,29 @@ export default function DashboardPage() {
             console.error('Failed to load dashboard:', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleFileUpload = async (event) => {
+        const files = event.target.files;
+        if (!files || files.length === 0) return;
+
+        const formData = new FormData();
+        Array.from(files).forEach((file) => formData.append('files', file));
+
+        try {
+            setUploading(true);
+            setUploadMessage('');
+            await uploadPolicyFiles(formData);
+            setUploadMessage('Files uploaded and knowledge base refreshed.');
+            await loadData();
+        } catch (err) {
+            console.error('Failed to upload policy files:', err);
+            setUploadMessage('Failed to upload files. Please try again.');
+        } finally {
+            setUploading(false);
+            // reset input so same file can be re-selected
+            event.target.value = '';
         }
     };
 
@@ -91,14 +116,37 @@ export default function DashboardPage() {
                     </div>
                 ) : (
                     <>
-                        {/* Stats - Minimal Typography Style */}
+                        {/* Top Row: Stats + HR Upload */}
                         <div className="flex items-center gap-12 mb-8">
-                            {statCards.map((card) => (
-                                <div key={card.title} className="flex flex-col">
-                                    <p className={`text-4xl font-semibold tracking-tight ${card.color} mb-1`}>{card.value}</p>
-                                    <p className="text-xs text-gray-500 font-medium tracking-wide uppercase">{card.title}</p>
-                                </div>
-                            ))}
+                            <div className="flex items-center gap-12">
+                                {statCards.map((card) => (
+                                    <div key={card.title} className="flex flex-col">
+                                        <p className={`text-4xl font-semibold tracking-tight ${card.color} mb-1`}>{card.value}</p>
+                                        <p className="text-xs text-gray-500 font-medium tracking-wide uppercase">{card.title}</p>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="ml-auto flex flex-col items-end gap-1">
+                                <label className="inline-flex items-center px-3 py-1.5 rounded-full border border-gray-200 bg-gray-50 text-xs text-gray-600 cursor-pointer hover:bg-gray-100 transition-colors">
+                                    <svg className="w-3.5 h-3.5 mr-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M16 8l-4-4m0 0L8 8m4-4v12" />
+                                    </svg>
+                                    <span className="font-medium">Upload policies / Excel</span>
+                                    <input
+                                        type="file"
+                                        multiple
+                                        accept=".pdf,.txt,.xlsx,.xls"
+                                        className="hidden"
+                                        onChange={handleFileUpload}
+                                        disabled={uploading}
+                                    />
+                                </label>
+                                {uploadMessage && (
+                                    <p className="text-[11px] text-gray-400">
+                                        {uploading ? 'Processing upload…' : uploadMessage}
+                                    </p>
+                                )}
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 gap-4">

@@ -8,7 +8,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'hr-chatbot-secret-key-2024';
 export const authController = {
     async signup(req, res, next) {
         try {
-            const { name, email, password, department, role } = req.body;
+            let { name, email, password, department, role } = req.body;
+            email = email?.trim().toLowerCase();
 
             if (!name || !email || !password || !department) {
                 return res.status(400).json({
@@ -71,7 +72,8 @@ export const authController = {
 
     async login(req, res, next) {
         try {
-            const { email, password } = req.body;
+            let { email, password } = req.body;
+            email = email?.trim().toLowerCase();
 
             if (!email || !password) {
                 return res.status(400).json({

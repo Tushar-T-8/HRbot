@@ -59,6 +59,8 @@ async function loadPolicyFiles() {
         const files = fs.readdirSync(policiesDir);
 
         for (const file of files) {
+            // For runtime answering we only index long-form policy documents (txt/pdf).
+            // Excel is used as a data source for syncing into the database, not for vector search.
             if (!file.endsWith('.txt') && !file.endsWith('.pdf')) continue;
 
             const filePath = path.join(policiesDir, file);
@@ -133,7 +135,7 @@ export const policyService = {
     /**
      * Search policies using Semantic Vector Matching (Voy).
      */
-    async searchPolicies(query, topN = 3) {
+    async searchPolicies(query, topN = 5) {
         if (!voyClient || !pipeline) {
             console.warn("Vector search not ready, falling back to basic search...");
             return "Vector search engine not initialized yet.";
@@ -144,7 +146,10 @@ export const policyService = {
             const queryEmbedding = await generateEmbedding(query);
 
             // Search in Voy
-            const results = voyClient.search(queryEmbedding, topN);
+            const rawResults = voyClient.search(queryEmbedding, topN);
+            
+            // Handle new Voy version structure (it often returns { neighbors: [...] })
+            const results = rawResults.neighbors ? rawResults.neighbors : rawResults;
 
             if (!results || results.length === 0) {
                 return 'No relevant policy information found.';

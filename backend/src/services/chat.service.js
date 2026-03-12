@@ -83,11 +83,18 @@ export const chatService = {
 
         switch (intent) {
             case 'leave_balance': {
-                if (!context) {
-                    context = await policyService.searchPolicies('leave balance annual sick days entitlement');
+                // Fastest path: answer directly from DB without calling the LLM.
+                if (employeeProfile && typeof employeeProfile.leaveBalance === 'number') {
+                    const balance = employeeProfile.leaveBalance;
+                    response = `You currently have ${balance} days of leave remaining.`;
+                    if (onChunk) onChunk(response);
+                } else {
+                    // Fallback: if we cannot resolve from DB, do NOT guess a number.
+                    // Tell the user to contact HR so they can update the Excel tracker and resync.
+                    response = "I couldn't find a personal leave balance for you in the system. " +
+                        "Please ask HR to update the leave tracker and sync it, then try again.";
+                    if (onChunk) onChunk(response);
                 }
-                const stream = await aiService.generateResponseStream(message, context, employeeProfile);
-                await consumeStream(stream);
                 break;
             }
 
