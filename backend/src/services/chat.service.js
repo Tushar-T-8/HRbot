@@ -122,7 +122,15 @@ export const chatService = {
         }
 
         // Log chat to in-memory store
-        const logEntry = { message, response, intent, createdAt: new Date() };
+        const logEntry = {
+            message,
+            response,
+            intent,
+            employeeId: employeeId ? parseInt(employeeId) : null,
+            employeeName: employeeProfile?.name || 'Unknown',
+            department: employeeProfile?.department || 'Unknown',
+            createdAt: new Date(),
+        };
         chatLogs.push(logEntry);
 
         return { message: response, intent };
@@ -142,9 +150,34 @@ export const chatService = {
             _count: { intent: count },
         }));
 
+        // Per-employee query analytics
+        const employeeMap = {};
+        for (const log of chatLogs) {
+            const key = log.employeeId || 'unknown';
+            if (!employeeMap[key]) {
+                employeeMap[key] = {
+                    employeeId: log.employeeId,
+                    name: log.employeeName,
+                    department: log.department,
+                    totalQueries: 0,
+                    intents: {},
+                    lastActive: log.createdAt,
+                };
+            }
+            employeeMap[key].totalQueries += 1;
+            employeeMap[key].intents[log.intent] = (employeeMap[key].intents[log.intent] || 0) + 1;
+            if (log.createdAt > employeeMap[key].lastActive) {
+                employeeMap[key].lastActive = log.createdAt;
+            }
+        }
+
+        const employeeActivity = Object.values(employeeMap)
+            .sort((a, b) => b.totalQueries - a.totalQueries);
+
         return {
             totalQueries: chatLogs.length,
             intentCounts,
+            employeeActivity,
             recentChats: chatLogs.slice(-10).reverse(),
         };
     },

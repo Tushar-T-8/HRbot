@@ -25,6 +25,7 @@ export default function ChatPage() {
         const date = now.toISOString();
         setMessages((prev) => [...prev, { role: 'user', content: text, timestamp, date }]);
         setIsLoading(true);
+        const startTime = Date.now();
 
         try {
             const controller = new AbortController();
@@ -64,6 +65,18 @@ export default function ChatPage() {
                 null,
                 controller.signal
             );
+
+            // Stamp generation time on the bot message
+            const elapsedMs = Date.now() - startTime;
+            setMessages((prev) => {
+                const newMessages = [...prev];
+                const lastIndex = newMessages.length - 1;
+                newMessages[lastIndex] = {
+                    ...newMessages[lastIndex],
+                    generationTime: elapsedMs,
+                };
+                return newMessages;
+            });
 
         } catch (err) {
             if (err.name === 'AbortError') {

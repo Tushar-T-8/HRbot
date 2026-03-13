@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { getChatAnalytics, getTickets, updateTicketStatus, uploadPolicyFiles, reloadPoliciesAndLeaves } from '../services/api';
 
 export default function DashboardPage() {
-    const [analytics, setAnalytics] = useState({ totalQueries: 0, intentCounts: [], recentChats: [] });
+    const [analytics, setAnalytics] = useState({ totalQueries: 0, intentCounts: [], employeeActivity: [], recentChats: [] });
     const [tickets, setTickets] = useState([]);
     const [ticketStats, setTicketStats] = useState({ total: 0, open: 0, inProgress: 0, resolved: 0 });
     const [loading, setLoading] = useState(true);
@@ -16,7 +16,7 @@ export default function DashboardPage() {
     const loadData = async () => {
         try {
             const [analyticsRes, ticketsRes] = await Promise.all([
-                getChatAnalytics().catch(() => ({ data: { data: { totalQueries: 0, intentCounts: [], recentChats: [] } } })),
+                getChatAnalytics().catch(() => ({ data: { data: { totalQueries: 0, intentCounts: [], employeeActivity: [], recentChats: [] } } })),
                 getTickets().catch(() => ({ data: { data: [] } })),
             ]);
             setAnalytics(analyticsRes.data.data);
@@ -175,6 +175,87 @@ export default function DashboardPage() {
                                     <p className="text-gray-400 text-xs">No queries yet.</p>
                                 )}
                             </div>
+
+                            {/* Employee Activity */}
+                            {analytics.employeeActivity.length > 0 && (
+                                <div className="bg-white rounded-xl border border-gray-100 p-5">
+                                    <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center justify-between">
+                                        <span>Employee Activity</span>
+                                        <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-normal">
+                                            {analytics.employeeActivity.length} {analytics.employeeActivity.length === 1 ? 'user' : 'users'}
+                                        </span>
+                                    </h2>
+                                    <div className="space-y-0 divide-y divide-gray-50">
+                                        {analytics.employeeActivity.map((emp, idx) => {
+                                            const maxQueries = analytics.employeeActivity[0]?.totalQueries || 1;
+                                            const barPct = Math.round((emp.totalQueries / maxQueries) * 100);
+                                            const intentColors = {
+                                                leave_balance: 'bg-emerald-400',
+                                                policy_question: 'bg-blue-400',
+                                                escalation: 'bg-red-400',
+                                                general_hr: 'bg-gray-400',
+                                            };
+                                            const totalIntentQueries = Object.values(emp.intents).reduce((a, b) => a + b, 0);
+
+                                            // Relative time helper
+                                            const getRelativeTime = (date) => {
+                                                const now = new Date();
+                                                const diff = Math.floor((now - new Date(date)) / 1000);
+                                                if (diff < 60) return 'Just now';
+                                                if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+                                                if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+                                                return `${Math.floor(diff / 86400)}d ago`;
+                                            };
+
+                                            return (
+                                                <div key={emp.employeeId || idx} className="py-3 first:pt-0 last:pb-0">
+                                                    <div className="flex items-center gap-3">
+                                                        {/* Avatar */}
+                                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-[11px] font-semibold text-gray-600 shrink-0">
+                                                            {emp.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '??'}
+                                                        </div>
+                                                        {/* Info */}
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <div className="flex items-center gap-2 min-w-0">
+                                                                    <span className="text-[13px] font-medium text-gray-800 truncate">{emp.name}</span>
+                                                                    <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-gray-50 text-gray-400 shrink-0">{emp.department}</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-2 shrink-0">
+                                                                    <span className="text-[11px] text-gray-400">{getRelativeTime(emp.lastActive)}</span>
+                                                                    <span className="text-sm font-semibold text-gray-900 tabular-nums">{emp.totalQueries}</span>
+                                                                </div>
+                                                            </div>
+                                                            {/* Intent breakdown bar */}
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="flex-1 h-1.5 rounded-full bg-gray-50 overflow-hidden flex">
+                                                                    {Object.entries(emp.intents).map(([intent, count]) => (
+                                                                        <div
+                                                                            key={intent}
+                                                                            className={`h-full ${intentColors[intent] || 'bg-gray-300'} first:rounded-l-full last:rounded-r-full`}
+                                                                            style={{ width: `${(count / totalIntentQueries) * barPct}%` }}
+                                                                            title={`${intentLabels[intent] || intent}: ${count}`}
+                                                                        />
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    {/* Legend */}
+                                    <div className="flex items-center gap-3 mt-4 pt-3 border-t border-gray-50">
+                                        {Object.entries({ leave_balance: 'bg-emerald-400', policy_question: 'bg-blue-400', escalation: 'bg-red-400', general_hr: 'bg-gray-400' }).map(([key, color]) => (
+                                            <div key={key} className="flex items-center gap-1">
+                                                <div className={`w-2 h-2 rounded-full ${color}`} />
+                                                <span className="text-[10px] text-gray-400">{intentLabels[key] || key}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </>
                 )}
