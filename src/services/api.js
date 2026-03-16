@@ -84,6 +84,8 @@ export const uploadPolicyFiles = (formData) =>
     api.post('/admin/upload', formData);
 export const reloadPoliciesAndLeaves = () =>
     api.post('/admin/reload');
+export const getPolicyFiles = () =>
+    api.get('/admin/files');
 
 // Auth API
 export const loginUser = (email, password) =>

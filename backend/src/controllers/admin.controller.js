@@ -52,5 +52,38 @@ export const adminController = {
             next(error);
         }
     },
+
+    async listFiles(req, res, next) {
+        try {
+            const policiesDir = path.resolve(__dirname, '../../..', 'policies');
+            if (!fs.existsSync(policiesDir)) {
+                return res.json({ success: true, data: [] });
+            }
+
+            const files = fs.readdirSync(policiesDir)
+                .filter(f => !f.startsWith('.'))
+                .map(name => {
+                    const filePath = path.join(policiesDir, name);
+                    const stat = fs.statSync(filePath);
+                    const ext = path.extname(name).toLowerCase();
+                    let type = 'other';
+                    if (ext === '.pdf') type = 'pdf';
+                    else if (ext === '.txt') type = 'text';
+                    else if (ext === '.xlsx' || ext === '.xls') type = 'excel';
+
+                    return {
+                        name,
+                        size: stat.size,
+                        type,
+                        uploadedAt: stat.mtime,
+                    };
+                })
+                .sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
+
+            res.json({ success: true, data: files });
+        } catch (error) {
+            next(error);
+        }
+    },
 };
 

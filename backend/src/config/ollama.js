@@ -1,9 +1,10 @@
-export const OLLAMA_BASE_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
-export const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3';
+// OpenAI Configuration (migrated from Ollama)
+export const OPENAI_API_KEY = process.env.OPEN_API_KEY || '';
+export const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
-export const ollamaConfig = {
-    baseUrl: OLLAMA_BASE_URL,
-    model: OLLAMA_MODEL,
-    generateUrl: `${OLLAMA_BASE_URL}/api/generate`,
-    embeddingsUrl: `${OLLAMA_BASE_URL}/api/embeddings`,
+export const openaiConfig = {
+    apiKey: OPENAI_API_KEY,
+    model: OPENAI_MODEL,
+    baseUrl: 'https://api.openai.com/v1',
+    chatUrl: 'https://api.openai.com/v1/chat/completions',
 };

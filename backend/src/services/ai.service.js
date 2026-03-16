@@ -17,10 +17,13 @@ try {
     console.warn('⚠️ Could not load prompts.json', e.message);
 }
 
+const OPENAI_API_KEY = process.env.OPEN_API_KEY || '';
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+
 export const aiService = {
     /**
-     * Generate a response using Ollama API directly.
-     * Falls back to smart policy-aware responses if Ollama is unavailable.
+     * Generate a response using OpenAI API with streaming.
+     * Falls back to smart policy-aware responses if OpenAI is unavailable.
      */
     async *generateResponseStream(prompt, context = '', employeeProfile = null) {
         let systemMessage = '';
@@ -45,28 +48,39 @@ export const aiService = {
             systemMessage = `${masterPrompt}\n\nPOLICY CONTEXT:\n${context}`;
         }
 
-        const ollamaUrl = process.env.OLLAMA_URL || 'http://localhost:11434/v1';
-        const model = process.env.OLLAMA_MODEL || 'llama3';
+        if (!OPENAI_API_KEY) {
+            console.error('❌ OPEN_API_KEY not set in .env');
+            const fallbackText = this.generateFromContext(prompt, context);
+            const words = fallbackText.split(' ');
+            for (const word of words) {
+                yield word + ' ';
+                await new Promise(r => setTimeout(r, 20));
+            }
+            return;
+        }
 
         try {
-            const response = await fetch(`${ollamaUrl}/chat/completions`, {
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${OPENAI_API_KEY}`,
                 },
                 body: JSON.stringify({
-                    model: model,
+                    model: OPENAI_MODEL,
                     messages: [
                         { role: 'system', content: systemMessage },
                         { role: 'user', content: prompt }
                     ],
                     temperature: 0.2,
+                    max_tokens: 512,
                     stream: true,
                 })
             });
 
             if (!response.ok) {
-                throw new Error(`Ollama error: ${response.status}`);
+                const errorBody = await response.text();
+                throw new Error(`OpenAI error ${response.status}: ${errorBody}`);
             }
 
             const reader = response.body.getReader();
@@ -101,14 +115,12 @@ export const aiService = {
                 }
             }
         } catch (error) {
-            console.error('❌ Ollama Error:', error?.message || error);
-            // Simulate typing for the fallback content if Ollama fails
+            console.error('❌ OpenAI Error:', error?.message || error);
+            // Fallback to context-based response if OpenAI fails
             const fallbackText = this.generateFromContext(prompt, context);
             const words = fallbackText.split(' ');
             for (const word of words) {
                 yield word + ' ';
-                // Optional small delay to make it look like typing if we really want to, 
-                // but let's just yield chunks quickly.
                 await new Promise(r => setTimeout(r, 20));
             }
         }
@@ -116,7 +128,7 @@ export const aiService = {
 
     /**
      * Generate a structured answer directly from policy context
-     * when Ollama/LLM is unavailable.
+     * when OpenAI/LLM is unavailable.
      */
     generateFromContext(prompt, context) {
         if (!context || context === 'No relevant policy information found.') {

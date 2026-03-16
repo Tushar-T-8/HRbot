@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getChatAnalytics, getTickets, updateTicketStatus, uploadPolicyFiles, reloadPoliciesAndLeaves } from '../services/api';
+import { getChatAnalytics, getTickets, updateTicketStatus, uploadPolicyFiles, reloadPoliciesAndLeaves, getPolicyFiles } from '../services/api';
 
 export default function DashboardPage() {
     const [analytics, setAnalytics] = useState({ totalQueries: 0, intentCounts: [], employeeActivity: [], recentChats: [] });
@@ -8,6 +8,7 @@ export default function DashboardPage() {
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
     const [uploadMessage, setUploadMessage] = useState('');
+    const [policyFiles, setPolicyFiles] = useState([]);
 
     useEffect(() => {
         loadData();
@@ -15,11 +16,13 @@ export default function DashboardPage() {
 
     const loadData = async () => {
         try {
-            const [analyticsRes, ticketsRes] = await Promise.all([
+            const [analyticsRes, ticketsRes, filesRes] = await Promise.all([
                 getChatAnalytics().catch(() => ({ data: { data: { totalQueries: 0, intentCounts: [], employeeActivity: [], recentChats: [] } } })),
                 getTickets().catch(() => ({ data: { data: [] } })),
+                getPolicyFiles().catch(() => ({ data: { data: [] } })),
             ]);
             setAnalytics(analyticsRes.data.data);
+            setPolicyFiles(filesRes.data.data || []);
             const loadedTickets = ticketsRes.data.data || [];
             setTickets(loadedTickets);
             setTicketStats({
@@ -253,6 +256,50 @@ export default function DashboardPage() {
                                                 <span className="text-[10px] text-gray-400">{intentLabels[key] || key}</span>
                                             </div>
                                         ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Knowledge Base — Uploaded Files */}
+                            {policyFiles.length > 0 && (
+                                <div className="bg-white rounded-xl border border-gray-100 p-5">
+                                    <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center justify-between">
+                                        <span>Knowledge Base</span>
+                                        <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-normal">
+                                            {policyFiles.length} {policyFiles.length === 1 ? 'file' : 'files'}
+                                        </span>
+                                    </h2>
+                                    <div className="space-y-0 divide-y divide-gray-50">
+                                        {policyFiles.map((file, idx) => {
+                                            const typeIcons = {
+                                                pdf: { bg: 'bg-red-50', text: 'text-red-500', label: 'PDF' },
+                                                text: { bg: 'bg-blue-50', text: 'text-blue-500', label: 'TXT' },
+                                                excel: { bg: 'bg-emerald-50', text: 'text-emerald-500', label: 'XLS' },
+                                                other: { bg: 'bg-gray-50', text: 'text-gray-400', label: 'FILE' },
+                                            };
+                                            const icon = typeIcons[file.type] || typeIcons.other;
+
+                                            const formatSize = (bytes) => {
+                                                if (bytes < 1024) return bytes + ' B';
+                                                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+                                                return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+                                            };
+
+                                            return (
+                                                <div key={idx} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+                                                    <div className={`w-8 h-8 rounded-lg ${icon.bg} flex items-center justify-center shrink-0`}>
+                                                        <span className={`text-[10px] font-bold ${icon.text}`}>{icon.label}</span>
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-[13px] font-medium text-gray-800 truncate">{file.name}</p>
+                                                        <p className="text-[10px] text-gray-400">
+                                                            {formatSize(file.size)} · {new Date(file.uploadedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                        </p>
+                                                    </div>
+                                                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-green-50 text-green-500 font-medium">Indexed</span>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             )}

@@ -78,6 +78,8 @@ export default function ChatPage() {
                 return newMessages;
             });
 
+
+
         } catch (err) {
             if (err.name === 'AbortError') {
                 return; // User cancelled generation
@@ -89,7 +91,7 @@ export default function ChatPage() {
                 const lastIndex = newMessages.length - 1;
                 newMessages[lastIndex] = {
                     role: 'bot',
-                    content: 'Could not connect to the server. Make sure the backend is running on port 5000 and Ollama is available.',
+                    content: 'Could not connect to the server. Make sure the backend is running on port 5000.',
                     timestamp: errNow.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     date: errNow.toISOString(),
                 };

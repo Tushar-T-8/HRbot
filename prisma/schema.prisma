@@ -8,14 +8,17 @@ datasource db {
 }
 
 model Employee {
-  id           Int      @id @default(autoincrement())
-  name         String
-  email        String   @unique
-  password     String
-  role         String   @default("EMPLOYEE")
-  department   String
-  leaveBalance Int      @default(0)
-  tickets      Ticket[]
+  id             Int           @id @default(autoincrement())
+  empCode        String?       @unique
+  name           String
+  email          String        @unique
+  password       String
+  role           String        @default("EMPLOYEE")
+  department     String
+  leaveBalance   Int           @default(0)
+  dateOfJoining  DateTime?
+  tickets        Ticket[]
+  leaveRecords   LeaveRecord[]
 }
 
 model Ticket {
@@ -25,4 +28,32 @@ model Ticket {
   createdAt  DateTime @default(now())
   employeeId Int
   employee   Employee @relation(fields: [employeeId], references: [id])
+}
+
+model LeaveRecord {
+  id              Int          @id @default(autoincrement())
+  year            Int
+  eligibleLeaves  Int          @default(0)
+  grantedLeaves   Int          @default(0)
+  utilizedLeaves  Int          @default(0)
+  availableLeaves Int          @default(0)
+  lop             Int          @default(0)
+  employeeId      Int
+  employee        Employee     @relation(fields: [employeeId], references: [id])
+  entries         LeaveEntry[]
+
+  @@unique([employeeId, year])
+  @@index([year])
+}
+
+model LeaveEntry {
+  id            Int         @id @default(autoincrement())
+  date          DateTime
+  month         Int
+  type          String      // LEAVE, WFH, LOP
+  leaveRecordId Int
+  leaveRecord   LeaveRecord @relation(fields: [leaveRecordId], references: [id])
+
+  @@index([month])
+  @@index([leaveRecordId, month])
 }
