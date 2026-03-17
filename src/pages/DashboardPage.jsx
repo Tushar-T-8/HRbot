@@ -309,7 +309,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Right Sidebar - Tickets */}
-            <div className="w-80 h-full bg-[#fdfbf7] border-l border-gray-100 flex flex-col shrink-0 overflow-hidden">
+            <div className="w-100 h-full bg-[#fdfbf7] border-l border-gray-100 flex flex-col shrink-0 overflow-hidden">
                 {!loading && (
                     <>
                         <div className="p-5 border-b border-gray-100 shrink-0">
