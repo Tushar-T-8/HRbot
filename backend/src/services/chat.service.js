@@ -113,6 +113,11 @@ export const chatService = {
             }
         };
 
+        // Fetch recent history of up to 5 messages to provide conversation context
+        const userHistory = chatLogs
+            .filter(log => log.employeeId === (employeeId ? parseInt(employeeId) : null))
+            .slice(-5);
+
         switch (intent) {
             case 'leave_query': {
                 // Month-specific leave query
@@ -143,7 +148,7 @@ export const chatService = {
                 } else {
                     context = await policyService.searchPolicies(message);
                 }
-                const stream = await aiService.generateResponseStream(message, context, employeeProfile);
+                const stream = await aiService.generateResponseStream(message, context, employeeProfile, userHistory);
                 await consumeStream(stream);
                 break;
             }
@@ -170,7 +175,7 @@ export const chatService = {
                 } else {
                     context = "Couldn't find a personal leave record for the user in the system.";
                 }
-                const stream = await aiService.generateResponseStream(message, context, employeeProfile);
+                const stream = await aiService.generateResponseStream(message, context, employeeProfile, userHistory);
                 await consumeStream(stream);
                 break;
             }
@@ -193,14 +198,14 @@ export const chatService = {
                 } else {
                     context = "Couldn't find a personal leave record for the user. Ask HR to update the leave tracker.";
                 }
-                const stream = await aiService.generateResponseStream(message, context, employeeProfile);
+                const stream = await aiService.generateResponseStream(message, context, employeeProfile, userHistory);
                 await consumeStream(stream);
                 break;
             }
 
             case 'policy_question': {
                 context = await policyService.searchPolicies(message);
-                const stream = await aiService.generateResponseStream(message, context, employeeProfile);
+                const stream = await aiService.generateResponseStream(message, context, employeeProfile, userHistory);
                 await consumeStream(stream);
                 break;
             }
@@ -216,7 +221,7 @@ export const chatService = {
             case 'general_hr':
             default: {
                 context = await policyService.searchPolicies(message);
-                const stream = await aiService.generateResponseStream(message, context, employeeProfile);
+                const stream = await aiService.generateResponseStream(message, context, employeeProfile, userHistory);
                 await consumeStream(stream);
                 break;
             }

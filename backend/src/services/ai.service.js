@@ -25,7 +25,7 @@ export const aiService = {
      * Generate a response using OpenAI API with streaming.
      * Falls back to smart policy-aware responses if OpenAI is unavailable.
      */
-    async *generateResponseStream(prompt, context = '', employeeProfile = null) {
+    async *generateResponseStream(prompt, context = '', employeeProfile = null, history = []) {
         let systemMessage = '';
         
         // Compile all the rules from the newly structured prompts.json into one master instruction block
@@ -60,6 +60,24 @@ export const aiService = {
         }
 
         try {
+            // Build the conversation history payload
+            const messagesPayload = [
+                { role: 'system', content: systemMessage }
+            ];
+
+            // Add previous messages (up to 5)
+            for (const log of history) {
+                if (log.message) {
+                    messagesPayload.push({ role: 'user', content: log.message });
+                }
+                if (log.response) {
+                    messagesPayload.push({ role: 'assistant', content: log.response });
+                }
+            }
+
+            // Add the current prompt
+            messagesPayload.push({ role: 'user', content: prompt });
+
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
                 headers: {
@@ -68,10 +86,7 @@ export const aiService = {
                 },
                 body: JSON.stringify({
                     model: OPENAI_MODEL,
-                    messages: [
-                        { role: 'system', content: systemMessage },
-                        { role: 'user', content: prompt }
-                    ],
+                    messages: messagesPayload,
                     temperature: 0.2,
                     max_tokens: 512,
                     stream: true,
