@@ -27,6 +27,10 @@ function detectMonth(message) {
 function detectIntent(message) {
     const lower = message.toLowerCase();
 
+    if (lower.startsWith('[ticket]')) {
+        return 'escalation';
+    }
+
     // Specific month leave query — "how many leaves in July?"
     const hasMonth = detectMonth(message);
     if (hasMonth && (lower.includes('leave') || lower.includes('wfh') || lower.includes('off'))) {
@@ -202,7 +206,8 @@ export const chatService = {
             }
 
             case 'escalation': {
-                const result = await ticketService.escalateIssue(employeeId || 1, message);
+                const cleanMessage = message.replace(/^\[ticket\]\s*/i, '');
+                const result = await ticketService.escalateIssue(employeeId || 1, cleanMessage);
                 response = result.message;
                 if (onChunk) onChunk(response);
                 break;

@@ -8,17 +8,22 @@ datasource db {
 }
 
 model Employee {
-  id             Int           @id @default(autoincrement())
-  empCode        String?       @unique
-  name           String
-  email          String        @unique
-  password       String
-  role           String        @default("EMPLOYEE")
-  department     String
-  leaveBalance   Int           @default(0)
-  dateOfJoining  DateTime?
-  tickets        Ticket[]
-  leaveRecords   LeaveRecord[]
+  id                   Int           @id @default(autoincrement())
+  empCode              String?       @unique
+  name                 String
+  email                String        @unique
+  password             String
+  role                 String        @default("EMPLOYEE")
+  department           String
+  leaveBalance         Int           @default(0)
+  dateOfJoining        DateTime?
+  status               String        @default("ACTIVE")
+  salary               String?
+  performanceReviews   String?
+  performanceSummaries String?
+  disciplinaryRecords  String?
+  tickets              Ticket[]
+  leaveRecords         LeaveRecord[]
 }
 
 model Ticket {
